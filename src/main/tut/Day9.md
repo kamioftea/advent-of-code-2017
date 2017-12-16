@@ -6,60 +6,72 @@ A solution for [Advent of Code 2017 - Day 9](http://adventofcode.com/2017/day/9)
 
 Today's task is kind of a twist on ensuring your curly braces match up. Not really much of a problem now that compilers and IDEs can do that for you. The twist is that as well as the curly braces there are angle braces, and these change the rules for how characters should be parsed when encountered.
 
-This puzzle is crying out for a state machine. I used a bunch of case classes, probably more than was needed for the puzzle given that the provided stream doesn't need validating against the syntax. For the puzzle I only need to enough interpretation to keep track of nesting depth, parsing mode (garbage/not), and when a group closes. I decided to instead essintially emit a state between each character. This then had a function to get the next state given the following character. Whilst a bit more verbose, it makes it easier to read what is going on, and is more likely to be reusable for part 2.
+This puzzle is crying out for a state machine. I used a bunch of case classes, probably more than was needed for the puzzle given that the provided stream doesn't need validating against the syntax. For the puzzle I only need to enough interpretation to keep track of nesting depth, parsing mode (garbage/not), and when a group closes. I decided to instead essentially emit a state between each character. This then had a function to get the next state given the following character. Whilst a bit more verbose, it makes it easier to read what is going on, and is more likely to be reusable for part 2.
 
 ```tut:book
-sealed trait State {
-  def apply(char: Char): State
-}
-
-case object ExpectOpen extends State {
-  override def apply(char: Char): State = char match {
-    case '{' => StartGroup
-    case '<' => StartGarbage
-    case _ => Error("ExpectOpen: expected '{' or '<'; got " + char)
+object Day9 {
+  sealed trait State {
+    def apply(char: Char): State
   }
-}
 
-case object StartGroup extends State {
-  override def apply(char: Char): State = char match {
-    case '{' => StartGroup
-    case '<' => StartGarbage
-    case '}' => CloseGroup
-    case _ => Error("ExpectOpen: expected '{', '}', or '<'; got " + char)
+  case object ExpectOpen extends State {
+    override def apply(char: Char): State = char match {
+      case '{' => StartGroup
+      case '<' => StartGarbage
+      case _ => Error("ExpectOpen: expected '{' or '<'; got " + char)
+    }
   }
-}
 
-case object CloseGroup extends State {
-  override def apply(char: Char): State = char match {
-    case ',' => ExpectOpen
-    case '}' => CloseGroup
-    case _ => Error("StartGroup: expected '}' or ','; got " + char)
+  case object StartGroup extends State {
+    override def apply(char: Char): State = char match {
+      case '{' => StartGroup
+      case '<' => StartGarbage
+      case '}' => CloseGroup
+      case _ => Error("ExpectOpen: expected '{', '}', or '<'; got " + char)
+    }
   }
-}
 
-case object InGarbage extends State {
-  override def apply(char: Char): State = char match {
-    case '>' => CloseGarbage
-    case '!' => Escaped
-    case _ => InGarbage
+  case object CloseGroup extends State {
+    override def apply(char: Char): State = char match {
+      case ',' => ExpectOpen
+      case '}' => CloseGroup
+      case _ => Error("StartGroup: expected '}' or ','; got " + char)
+    }
   }
-}
 
-// In initially for part 1 this didn't exist and there was just InGarbage.
-// It is easier to include it here than have to redefine all the states again 
-// for part 2
-case object StartGarbage extends InGarbage
+  case object InGarbage extends State {
+    override def apply(char: Char): State = char match {
+      case '>' => CloseGarbage
+      case '!' => Escaped
+      case _ => InGarbage
+    }
+  }
 
-case object Escaped extends State {
-  override def apply(char: Char): State = StartGarbage
-}
+  // In initially for part 1 this didn't exist and there was just InGarbage.
+  // It is easier to include it here than have to redefine all the states again 
+  // for part 2
+  case object StartGarbage extends State {
+    override def apply(char: Char): State = char match {
+      case '>' => CloseGarbage
+      case '!' => Escaped
+      case _ => InGarbage
+    }
+  }
 
-case object CloseGarbage extends State {
-  override def apply(char: Char): State = char match {
-    case ',' => ExpectOpen
-    case '}' => CloseGroup
-    case _ => Error("StartGroup: expected '}' or ','; got " + char)
+  case object Escaped extends State {
+    override def apply(char: Char): State = StartGarbage
+  }
+
+  case object CloseGarbage extends State {
+    override def apply(char: Char): State = char match {
+      case ',' => ExpectOpen
+      case '}' => CloseGroup
+      case _ => Error("StartGroup: expected '}' or ','; got " + char)
+    }
+  }
+
+  case class Error(msg: String) extends State {
+    override def apply(char: Char): State = this
   }
 }
 ```
@@ -67,6 +79,8 @@ case object CloseGarbage extends State {
 To map the stream of chars from the input to a stream of states I can pull a nifty trick of lazily defining a Stream starting with the initial state. Then to get the rest of that stream I append the Stream[Chars] zipped with the stream itself. Since the first value is defined, that gets zipped with the first character, which is enough to compute the second state. Thanks to the lazy evaluation, that second state is then available to be zipped with the second Char, producing a third state, and so on...
 
 ```tut:book
+import Day9._
+
 def parseStream(chars: Stream[Char]): Stream[State] = {
 
   lazy val states: Stream[State] =
@@ -81,7 +95,6 @@ Now there is a stream of states it is possible to filter to just the ones needed
 
 ```tut:book
 def scoreGroups(states: Stream[State]): Int = {
-  @tailrec
   def iter(states: Stream[State], depth: Int = 0, score: Int = 0): Int =
     states match {
       case Stream.Empty => score
@@ -207,7 +220,7 @@ class Day9Part1Test extends FunSuite with Matchers {
 
   }
 
-  test("can claculate the group score") {
+  test("can calculate the group score") {
 
     scoreGroups(parseStream("{},".toStream)) shouldBe 1
     scoreGroups(parseStream("{{{}}},".toStream)) shouldBe 6
@@ -221,7 +234,7 @@ class Day9Part1Test extends FunSuite with Matchers {
   }
 }
 
-(new art1Test).execute()
+(new Day9Part1Test).execute()
 ```
 
 With those passing, I can get the score for the full puzzle input.
@@ -230,14 +243,14 @@ With those passing, I can get the score for the full puzzle input.
 import scala.io.Source
 def input = Source.fromResource("day9input.txt").toStream
 
-scoreGroups(parseStream(input)
+scoreGroups(parseStream(input))
 ```
 
 ## Part 2
 
-For this I needed to analyse the garbage instead of the groups. You may have noted the comment about StartGarbage not existing when I wrote part 1. This was becuase there was no need to distiguish if we'd just read the opening < of a garbage sequene, and the rest of the sequence. Part two however asked for just that. So I refactored the states to distingish start from in, and the rest was just counting.
+For this I needed to analyse the garbage instead of the groups. You may have noted the comment about StartGarbage not existing when I wrote part 1. This was because there was no need to distinguish if we'd just read the opening < of a garbage sequence, and the rest of the sequence. Part two however asked for just that. So I refactored the states to distinguish start from in, and the rest was just counting.
 
-```tut:main
+```tut:book
 def countGarbageChars(states: Stream[State]): Int =
   states.count(_ == InGarbage)
 
@@ -247,7 +260,7 @@ The parsing tests still work, so the refactor had been completed correctly. Rewo
 
 ```tut:book
 class Day9Part2Test extends FunSuite with Matchers {
-  test("canCountGarbage") {
+  test("can count garbage chars") {
     countGarbageChars(parseStream("<>,".toStream)) shouldBe 0
     countGarbageChars(parseStream("<random characters>,".toStream)) shouldBe 17
     countGarbageChars(parseStream("<<<<>,".toStream)) shouldBe 3
@@ -266,5 +279,5 @@ class Day9Part2Test extends FunSuite with Matchers {
 This can then be applied to the puzzle input
 
 ```tut:book
-countGarbageChars(parseStream(input)
+countGarbageChars(parseStream(input))
 ```
