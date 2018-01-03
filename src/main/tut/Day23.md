@@ -130,7 +130,7 @@ countMults(program)
 
 For part two I initially tried running the code with the debug flag set
 `countMults(program, Map('a' -> 1))`, but this was obviously not going to 
-complete anytime soon. I put in a few debug `printlns` to try and get a handle
+complete anytime soon. I put in a few debug `println`s to try and get a handle
 on what was going on and ended up annotating and optimising the program in place
 
 The first section is just initialisation, and is how the debug flag actually
@@ -149,7 +149,7 @@ influences the execution.
 From there there are a number of loops. I've labeled the jnz targets below on
 the left. Then it is noticeable that g is often used in a pattern:
 * Set g = var1
-* Subtract var2 from 0
+* Subtract var2 from g
 * If g != 0 skip the next line/loop
 
 Which is equivalent to if(var1 == var2) set a thing or break out of the current 
@@ -163,25 +163,24 @@ C: set e 2       |   :middle loop {
 B: set g d       |      :inner loop {
    mul g e       |        
    sub g b       |        
->A jnz g 2       |        if (d * e) == b {
-   set f 0       |          set f = 0
-A: sub e -1      |        }
-   set g e       | 
+>A jnz g 2       |        if (d * e) == b set f = 0
+   set f 0       |        
+A: sub e -1      |        
+   set g e       |        
    sub g b       |        if(e++ == b) break  
 >B jnz g -8      |      } 
-   sub d -1      | 
-   set g d       | 
+   sub d -1      |      
+   set g d       |      
    sub g b       |      if(d++ == b) break
 >C jnz g -13     |   } 
->D jnz f 2       |   if (f == 0) {
-   sub h -1      |     h++
-D: set g b       |   }
+>D jnz f 2       |   
+   sub h -1      |   if (f == 0) h++
+D: set g b       |   
    sub g c       |   
 >E jnz g 2       |   if(b == c) exit  
 >? jnz 1 3       |   
-E: sub b -17     |   b -= 17
+E: sub b -17     |   b += 17
 >G jnz 1 -23     | }
-```
 
 The inner loop and middle loops are essentially looping `d` and `e` through all 
 the integers between 2 and the current `b` setting a flag if `d * e == b`, 
@@ -223,11 +222,10 @@ def decomposed(seed: Int): Int =
 decomposed(79)
 ```
 
-It is worth noting that whilst there is nothing to be done about the inefficient
-modulus as that is the best that can be done with the instruction set available,
-the early break can be implemented. Given that 907 of the 1000 outer loops would
-then break after less than &#8730;124,900 iterations of the middle loop. This
-probably isn't enough to make it viable, but still a major improvement. The
-change would be fairly simple: add `jnz 1 9` after `set f = 0`, and increment the
-`jnz` instructions for the loops outside that by 1 to account for the extra
-instruction.
+It is worth noting that whilst there is nothing obvious to be done about the 
+inefficient modulus  with the instruction set available, the early break can be 
+implemented. Given that 907 of the 1000 outer loops would then break after less 
+than &#8730;124,900 iterations of the middle loop. This probably isn't enough to
+make it viable, but still a major improvement. The change would be fairly simple:
+add `jnz 1 9` after `set f = 0`, and increment the `jnz` instructions for the 
+loops outside that by 1 to account for the extra instruction.
