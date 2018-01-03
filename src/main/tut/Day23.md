@@ -128,12 +128,12 @@ countMults(program)
 
 ## Part 2
 
-For part two I initially tried running the code with the debug flag set
+For part two I initially tried running the code with the debug flag `a` set:
 `countMults(program, Map('a' -> 1))`, but this was obviously not going to 
 complete anytime soon. I put in a few debug `println`s to try and get a handle
-on what was going on and ended up annotating and optimising the program in place
+on what was going on and ended up annotating and optimising the program in place.
 
-The first section is just initialisation, and is how the debug flag actually
+The first section is just initialisation, and is how the value of `a` actually
 influences the execution. 
 ```
   set b 79       | Intiialise b and c, this is where diferent  
@@ -156,7 +156,7 @@ Which is equivalent to if(var1 == var2) set a thing or break out of the current
 loop. I've broken the program down to the loop structure, and factored out the 
 lines using g into the equivalent if statements.  
 ```
-G: set f 1       | :outer loop
+G: set f 1       | :outer loop {
    set d 2       |   set f = 1, d = 2
 C: set e 2       |   :middle loop {
                  |      set e = 2
@@ -181,21 +181,26 @@ D: set g b       |
 >? jnz 1 3       |   
 E: sub b -17     |   b += 17
 >G jnz 1 -23     | }
+```
 
 The inner loop and middle loops are essentially looping `d` and `e` through all 
 the integers between 2 and the current `b` setting a flag if `d * e == b`, 
 but still completing both loops. The inner loop can be refactored into 
-`if (b % d == 0) f = true`. Once this is reached we can also break out of both 
-loops. This means I can write the middle loop in Scala as
+`if (b % d == 0) f = true`. If this is ever true it is more optimal to break out
+of both loops immediately. It can also be optimised break out of the middle loop
+once the counter exceeds √`b`. This means I can write the middle loop in Scala 
+as:
 
 ```tut:book
 def hasFactor(b: Int): Boolean = {
+  val rootB = Math.sqrt(b).toInt
+
   def iter(d: Int): Boolean = {
-    if(d == b) return false
+    if(d > rootB) return false
     if(b % d == 0) return true
     iter(d + 1)
   }
-  
+
   iter(2)
 }
 ```
@@ -223,7 +228,7 @@ decomposed(79)
 ```
 
 It is worth noting that whilst there is nothing obvious to be done about the 
-inefficient modulus  with the instruction set available, the early break can be 
+inefficient modulus with the instruction set available, the early break can be 
 implemented. Given that 907 of the 1000 outer loops would then break after less 
 than &#8730;124,900 iterations of the middle loop. This probably isn't enough to
 make it viable, but still a major improvement. The change would be fairly simple:
