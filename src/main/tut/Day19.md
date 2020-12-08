@@ -51,12 +51,12 @@ import org.scalatest.{FunSuite, Matchers}
 class Day19Part1Test extends FunSuite with Matchers {
 
   private val testGrid =
-    """|     |
-       |     |  +--+
-       |     A  |  C
-       | F---|----E|--+
-       |     |  |  |  D
-       |     +B-+  +--+""".stripMargin.lines.toVector
+    """#     |
+       #     |  +--+
+       #     A  |  C
+       # F---|----E|--+
+       #     |  |  |  D
+       #     +B-+  +--+""".stripMargin('#').lines.toVector
 
   test("testFindStart") {
     findStart(testGrid) shouldBe 5

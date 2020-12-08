@@ -230,7 +230,7 @@ decomposed(79)
 It is worth noting that whilst there is nothing obvious to be done about the 
 inefficient modulus with the instruction set available, the early break can be 
 implemented. Given that 907 of the 1000 outer loops would then break after less 
-than &#8730;124,900 iterations of the middle loop. This probably isn't enough to
-make it viable, but still a major improvement. The change would be fairly simple:
+than √124,900 iterations of the middle loop. This probably isn't enough to make 
+it viable, but still a major improvement. The change would be fairly simple:
 add `jnz 1 9` after `set f = 0`, and increment the `jnz` instructions for the 
 loops outside that by 1 to account for the extra instruction.
